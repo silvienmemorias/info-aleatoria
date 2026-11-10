@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Artista al azar</title>
+<meta name="description" content="Un artista visual al azar: práctica, un dato, cinco obras, biografía y enlaces.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f3ee; --surface:#fffdf9; --ink:#1d1b18; --muted:#6b655c; --line:#e3ddd3;
+    --accent:#c2410c; --accent-soft:#fbe7dc; --chip:#efe9e0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#141210; --surface:#1d1a17; --ink:#f2ede6; --muted:#a39b90; --line:#2f2a25;
+      --accent:#fb923c; --accent-soft:#3a2416; --chip:#28231f; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink)}
+  body{font:16px/1.6 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+  main{max-width:880px;margin:0 auto;padding:max(24px,env(safe-area-inset-top)) 16px 64px}
+  header.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:28px}
+  .brand{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  button.again{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);
+    font:500 14px Inter,sans-serif;padding:9px 14px;border-radius:999px;cursor:pointer}
+  button.again:hover{border-color:var(--accent);color:var(--accent)}
+  .eyebrow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .chip{background:var(--chip);color:var(--muted);font-size:13px;padding:4px 10px;border-radius:999px}
+  .chip.indie{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(38px,8vw,64px);line-height:1.02;margin:0 0 8px;letter-spacing:-.01em}
+  .practice{font-size:19px;color:var(--muted);margin:0 0 28px}
+  .fact{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);
+    border-radius:10px;padding:16px 18px;margin:0 0 36px;font-size:17px}
+  .fact b{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+  h2{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:24px;margin:0 0 14px}
+  section{margin-bottom:40px}
+  .gallery{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  .gallery a{position:relative;display:block;border-radius:10px;overflow:hidden;background:var(--chip);
+    aspect-ratio:1;grid-column:span 2;text-decoration:none;color:inherit}
+  .gallery a:nth-child(1),.gallery a:nth-child(2){grid-column:span 3;aspect-ratio:4/3}
+  .gallery img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s}
+  .gallery a:hover img{transform:scale(1.04)}
+  .gallery .cap{position:absolute;left:0;right:0;bottom:0;padding:22px 10px 8px;font-size:12px;line-height:1.3;color:#fff;
+    background:linear-gradient(transparent,rgba(0,0,0,.72))}
+  .gallery .cap small{display:block;opacity:.75}
+  .gallery .empty{display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;
+    font-size:13px;color:var(--muted);border:1px dashed var(--line);background:transparent}
+  .skeleton{animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.5}}
+  .note{font-size:13px;color:var(--muted);margin-top:10px}
+  .bio{font-size:17px;max-width:65ch}
+  .links{display:flex;flex-wrap:wrap;gap:10px}
+  .links a{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink);background:var(--surface);
+    border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-weight:500}
+  .links a:hover{border-color:var(--accent);color:var(--accent)}
+  .links a span{color:var(--muted);font-weight:400;font-size:13px}
+  .err{padding:40px 0;color:var(--muted)}
+  @media (max-width:560px){
+    .gallery{grid-template-columns:1fr 1fr}
+    .gallery a,.gallery a:nth-child(1),.gallery a:nth-child(2){grid-column:span 1;aspect-ratio:1}
+    .gallery a:nth-child(1){grid-column:span 2;aspect-ratio:4/3}
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div class="brand">Artista al azar</div>
+    <button class="again" id="again">Otro artista ↻</button>
+  </header>
+  <div id="app"><p class="err">Cargando…</p></div>
+</main>
+
+<script>
+const DATA_URL = 'artistas.json';
+const N = 5;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const shuffle = (a) => { for (let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const norm = (s) => (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+
+let artistas = [];
+
+async function init(){
+  try{
+    const r = await fetch(DATA_URL, {cache:'no-cache'});
+    artistas = (await r.json()).artistas;
+  }catch(e){ $('#app').innerHTML = '<p class="err">No se pudo cargar artistas.json</p>'; return; }
+  const id = new URLSearchParams(location.search).get('id');
+  const a = artistas.find(x => x.id === id) || pickRandom();
+  render(a);
+}
+
+function pickRandom(exclude){
+  const pool = artistas.filter(x => x.id !== exclude);
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+$('#again').onclick = () => {
+  const cur = new URLSearchParams(location.search).get('id');
+  const a = pickRandom(cur);
+  history.pushState(null,'','?id='+encodeURIComponent(a.id));
+  render(a); window.scrollTo({top:0,behavior:'smooth'});
+};
+window.onpopstate = () => init();
+
+function render(a){
+  document.title = a.nombre + ' · Artista al azar';
+  const links = [];
+  if (a.museo) links.push({t:a.museo.nombre, s:'Museo', u:a.museo.url});
+  if (a.web) links.push({t:'Sitio web', s:new URL(a.web).hostname.replace('www.',''), u:a.web});
+  (a.redes||[]).forEach(r => links.push({t:r.red, s:r.url.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,''), u:r.url}));
+  links.push({t:'Buscar más obras', s:'Google Imágenes', u:'https://www.google.com/search?tbm=isch&q='+encodeURIComponent(a.nombre+' artwork')});
+
+  $('#app').innerHTML = `
+    <div class="eyebrow">
+      <span class="chip">${esc(a.pais)}</span>
+      <span class="chip">${esc(a.anos)}</span>
+      ${a.independiente ? '<span class="chip indie">Independiente</span>' : ''}
+    </div>
+    <h1>${esc(a.nombre)}</h1>
+    <p class="practice">${esc(a.practica)}</p>
+    <div class="fact"><b>Dato</b>${esc(a.dato)}</div>
+    <section>
+      <h2>Obras</h2>
+      <div class="gallery" id="gallery">${'<a class="skeleton"></a>'.repeat(N)}</div>
+      <p class="note">Toca una imagen para abrirla en su fuente original.</p>
+    </section>
+    <section><h2>Biografía</h2><p class="bio">${esc(a.bio)}</p></section>
+    <section><h2>Enlaces</h2><div class="links">
+      ${links.map(l=>`<a href="${esc(l.u)}" target="_blank" rel="noopener">${esc(l.t)} <span>${esc(l.s)}</span></a>`).join('')}
+    </div></section>`;
+  loadImages(a);
+}
+
+/* ---------- Imágenes: manual → Wikidata → Art Institute of Chicago → Wikimedia Commons ---------- */
+async function loadImages(a){
+  const token = a.id; loadImages.cur = token;
+  const out = []; const seen = new Set();
+  const add = (list) => { for (const it of list){ if (out.length>=N) break; if(!it.src||seen.has(it.src)) continue; seen.add(it.src); out.push(it);} };
+
+  add((a.imagenes||[]).map(i => ({src:i.src, link:i.enlace||i.src, title:i.titulo||'', source:i.fuente||'Enlace'})));
+  const sources = [fromWikidata, fromAIC, fromCommons];
+  for (const fn of sources){
+    if (out.length >= N) break;
+    try { add(await fn(a)); } catch(e){ console.warn(fn.name, e); }
+    if (loadImages.cur !== token) return;
+  }
+  paint(out, a);
+}
+
+function paint(items, a){
+  const g = $('#gallery'); if (!g) return;
+  let html = items.map(i => `
+    <a href="${esc(i.link)}" target="_blank" rel="noopener" title="${esc(i.title)}">
+      <img src="${esc(i.src)}" alt="${esc(i.title||a.nombre)}" loading="lazy" referrerpolicy="no-referrer"
+           onerror="this.parentElement.remove()">
+      <div class="cap">${esc(i.title)}<small>${esc(i.source)}</small></div>
+    </a>`).join('');
+  const fallback = a.web || (a.redes&&a.redes[0]&&a.redes[0].url) || (a.museo&&a.museo.url);
+  if (items.length < N){
+    html += `<a class="empty" href="${esc(fallback || 'https://www.google.com/search?tbm=isch&q='+encodeURIComponent(a.nombre))}" target="_blank" rel="noopener">
+      ${items.length ? 'Ver más obras' : 'No hay imágenes abiertas de esta obra.<br>Ver su portafolio →'}</a>`;
+  }
+  g.innerHTML = html;
+}
+
+async function getJSON(url){ const r = await fetch(url); if(!r.ok) throw new Error(r.status); return r.json(); }
+const ARTIST_RX = /(artist|painter|sculpt|photograph|illustrat|printmaker|muralist|designer|artista|pintor|escultor|fot[oó]graf|ilustrador|grabador|ukiyo)/i;
+
+async function wikidataId(a){
+  if (a.wikidata) return a.wikidata;
+  for (const lang of ['en','es']){
+    const j = await getJSON(`https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&origin=*&language=${lang}&uselang=${lang}&type=item&limit=10&search=${encodeURIComponent(a.nombre)}`);
+    const hit = (j.search||[]).find(s => ARTIST_RX.test(s.description||''));
+    if (hit) return hit.id;
+  }
+  return null;
+}
+
+async function fromWikidata(a){
+  const q = await wikidataId(a); if (!q) return [];
+  const sparql = `SELECT ?work ?workLabel ?img WHERE { ?work wdt:P170 wd:${q}; wdt:P18 ?img. SERVICE wikibase:label { bd:serviceParam wikibase:language "es,en". } } LIMIT 60`;
+  const j = await getJSON('https://query.wikidata.org/sparql?format=json&query='+encodeURIComponent(sparql));
+  const rows = shuffle(j.results.bindings);
+  return rows.map(r => {
+    const file = decodeURIComponent(r.img.value.split('/Special:FilePath/')[1]||'');
+    return { src: r.img.value.replace(/^http:/,'https:') + '?width=700',
+             link: 'https://commons.wikimedia.org/wiki/File:' + encodeURIComponent(file.replace(/ /g,'_')),
+             title: r.workLabel ? r.workLabel.value : '', source: 'Wikimedia Commons' };
+  });
+}
+
+async function fromAIC(a){
+  const last = norm(a.nombre.split(' ').slice(-1)[0]);
+  const j = await getJSON(`https://api.artic.edu/api/v1/artworks/search?q=${encodeURIComponent(a.nombre)}&limit=40&fields=id,title,image_id,artist_title`);
+  const rows = (j.data||[]).filter(d => d.image_id && norm(d.artist_title).includes(last));
+  return shuffle(rows).map(d => ({
+    src:`https://www.artic.edu/iiif/2/${d.image_id}/full/600,/0/default.jpg`,
+    link:`https://www.artic.edu/artworks/${d.id}`, title:d.title, source:'Art Institute of Chicago' }));
+}
+
+async function fromCommons(a){
+  const j = await getJSON(`https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=20&gsrsearch=${encodeURIComponent('"'+a.nombre+'" filetype:bitmap')}&prop=imageinfo&iiprop=url&iiurlwidth=700`);
+  const pages = Object.values((j.query&&j.query.pages)||{});
+  return shuffle(pages).filter(p => p.imageinfo).map(p => ({
+    src:p.imageinfo[0].thumburl, link:p.imageinfo[0].descriptionurl,
+    title:p.title.replace(/^File:/,'').replace(/\.[a-z]+$/i,''), source:'Wikimedia Commons' }));
+}
+
+init();
+</script>
+</body>
+</html>
